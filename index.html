@@ -516,6 +516,17 @@
   </div>
 </div>
 
+<!-- MODAL API Key -->
+<div class="modal-overlay" id="apikey-modal">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-title"><!-- MODAL conferma eliminazione -->#x1F511; API Key Anthropic richiesta</div>
+    <div class="modal-body">Per analizzare il PDF con AI serve una API key di Anthropic.<br><br><strong>Come ottenerla:</strong> vai su <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:var(--blue)">console.anthropic.com</a> <!-- MODAL conferma eliminazione -->#x2192; crea una key (piano gratuito disponibile).<br><br>La key viene salvata solo nel tuo browser e non viene mai trasmessa a nessun server esterno tranne Anthropic.</div>
+    <div class="field" style="margin-bottom:14px"><label>API Key (sk-ant-...)</label><input type="password" id="api-key-input" placeholder="sk-ant-api03-..." style="font-family:monospace;font-size:12px"></div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px"><input type="checkbox" id="save-key" checked style="width:auto;flex-shrink:0"><label for="save-key" style="font-size:12px;color:var(--text2);cursor:pointer">Ricorda questa key nel browser</label></div>
+    <div class="modal-actions"><button class="btn" onclick="closeApiKeyModal()">Annulla</button><button class="btn btn-primary" onclick="saveApiKeyAndRun()">Analizza con AI</button></div>
+  </div>
+</div>
+
 <!-- MODAL conferma eliminazione -->
 <div class="modal-overlay" id="del-modal">
   <div class="modal">
@@ -560,6 +571,32 @@ function loadCases() {
 }
 function saveCases() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(cases)); } catch(e) {}
+}
+
+// ─── API KEY ──────────────────────────────────────────────────────────────────
+function getApiKey() {
+  return localStorage.getItem('evar_anthropic_key') || '';
+}
+function showApiKeyModal() {
+  const saved = getApiKey();
+  if (saved) document.getElementById('api-key-input').value = saved;
+  document.getElementById('apikey-modal').classList.add('visible');
+}
+function closeApiKeyModal() {
+  document.getElementById('apikey-modal').classList.remove('visible');
+  document.getElementById('ai-spin').classList.remove('visible');
+}
+function saveApiKeyAndRun() {
+  const key = document.getElementById('api-key-input').value.trim();
+  if (!key || !key.startsWith('sk-ant-')) {
+    alert('Inserisci una API key valida (inizia con sk-ant-)');
+    return;
+  }
+  if (document.getElementById('save-key').checked) {
+    localStorage.setItem('evar_anthropic_key', key);
+  }
+  document.getElementById('apikey-modal').classList.remove('visible');
+  runAI();
 }
 
 // ─── NAVIGATION ──────────────────────────────────────────────────────────────
@@ -677,9 +714,20 @@ Schema JSON richiesto:
 Rispondi SOLO con il JSON. Se un dato non è presente o non è chiaramente leggibile, scrivi null.`;
 
   try {
+    const apiKey = getApiKey() || (document.getElementById('api-key-input') ? document.getElementById('api-key-input').value.trim() : '');
+    if (!apiKey) {
+      document.getElementById('ai-spin').classList.remove('visible');
+      showApiKeyModal();
+      return;
+    }
     const resp = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true"
+      },
       body: JSON.stringify({
         model: "claude-sonnet-4-6",
         max_tokens: 1000,
