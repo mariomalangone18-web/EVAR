@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EVAR Data Hub — Chirurgia Vascolare</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #ffffff; --bg2: #f7f8fa; --bg3: #f0f2f5;
+    --text: #111827; --text2: #6b7280; --text3: #9ca3af;
+    --border: rgba(0,0,0,0.10); --border2: rgba(0,0,0,0.18);
+    --blue-bg: #eff6ff; --blue: #1d4ed8; --blue-light: #dbeafe;
+    --green-bg: #f0fdf4; --green: #15803d; --green-light: #dcfce7;
+    --amber-bg: #fffbeb; --amber: #b45309; --amber-light: #fef3c7;
+    --red-bg: #fef2f2; --red: #b91c1c; --red-light: #fee2e2;
+    --radius: 8px; --radius-lg: 12px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg3); color: var(--text); font-size: 14px; line-height: 1.5; }
+  .app { display: flex; height: 100vh; overflow: hidden; }
+
+  /* SIDEBAR */
+  .sidebar { width: 230px; flex-shrink: 0; background: var(--bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+  .logo { padding: 20px 18px 16px; border-bottom: 1px solid var(--border); }
+  .logo-icon { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+  .logo-icon i { font-size: 22px; color: var(--blue); }
+  .logo-title { font-size: 16px; font-weight: 600; color: var(--text); }
+  .logo-sub { font-size: 11px; color: var(--text3); padding-left: 32px; }
+  .nav { padding: 10px 8px; flex: 1; }
+  .nav-section { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text3); padding: 8px 10px 4px; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: var(--radius); cursor: pointer; font-size: 13px; color: var(--text2); margin-bottom: 1px; transition: all 0.12s; user-select: none; }
+  .nav-item:hover { background: var(--bg2); color: var(--text); }
+  .nav-item.active { background: var(--blue-light); color: var(--blue); font-weight: 500; }
+  .nav-item i { font-size: 17px; flex-shrink: 0; }
+  .sidebar-footer { padding: 12px 16px; border-top: 1px solid var(--border); font-size: 11px; color: var(--text3); }
+
+  /* MAIN */
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+  .topbar { padding: 0 24px; height: 54px; background: var(--bg); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .topbar-left { display: flex; align-items: center; gap: 10px; }
+  .topbar-title { font-size: 15px; font-weight: 600; color: var(--text); }
+  .topbar-badge { font-size: 11px; padding: 3px 10px; border-radius: 20px; background: var(--green-bg); color: var(--green); font-weight: 500; }
+  .content { flex: 1; overflow-y: auto; padding: 24px; }
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* CARDS */
+  .card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; margin-bottom: 16px; box-shadow: var(--shadow); }
+  .card-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 18px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .card-title i { font-size: 17px; color: var(--blue); }
+
+  /* GRIDS */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+  .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+
+  /* FORM */
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label { font-size: 12px; font-weight: 500; color: var(--text2); }
+  .field input, .field select, .field textarea {
+    padding: 8px 11px; border: 1px solid var(--border2); border-radius: var(--radius);
+    font-size: 13px; color: var(--text); background: var(--bg);
+    transition: border-color 0.15s, box-shadow 0.15s; font-family: inherit;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus {
+    outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(29,78,216,0.1);
+  }
+  .field textarea { height: 72px; resize: vertical; line-height: 1.5; }
+
+  /* BUTTONS */
+  .btn { display: inline-flex; align-items: center; gap: 7px; padding: 8px 16px; font-size: 13px; border-radius: var(--radius); cursor: pointer; border: 1px solid var(--border2); background: var(--bg); color: var(--text); font-weight: 500; transition: all 0.12s; font-family: inherit; white-space: nowrap; }
+  .btn:hover { background: var(--bg2); border-color: var(--border2); }
+  .btn:active { transform: scale(0.98); }
+  .btn i { font-size: 16px; }
+  .btn-primary { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .btn-primary:hover { background: #1e40af; border-color: #1e40af; }
+  .btn-success { background: var(--green); color: #fff; border-color: var(--green); }
+  .btn-success:hover { background: #166534; }
+  .btn-danger { background: var(--red-bg); color: var(--red); border-color: var(--red-light); }
+  .btn-danger:hover { background: var(--red-light); }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+
+  /* STAT CARDS */
+  .stat-card { background: var(--bg2); border-radius: var(--radius); padding: 16px; border: 1px solid var(--border); }
+  .stat-label { font-size: 11px; font-weight: 500; color: var(--text3); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 8px; }
+  .stat-value { font-size: 28px; font-weight: 700; color: var(--text); line-height: 1; }
+  .stat-sub { font-size: 11px; color: var(--text3); margin-top: 4px; }
+
+  /* UPLOAD */
+  .upload-zone { border: 2px dashed var(--border2); border-radius: var(--radius-lg); padding: 36px; text-align: center; cursor: pointer; transition: all 0.15s; }
+  .upload-zone:hover { border-color: var(--blue); background: var(--blue-bg); }
+  .upload-zone.has-file { border-color: var(--green); background: var(--green-bg); }
+  .upload-icon { font-size: 36px; color: var(--text3); margin-bottom: 10px; display: block; }
+  .upload-zone.has-file .upload-icon { color: var(--green); }
+
+  /* AI */
+  .ai-processing { display: none; align-items: center; gap: 12px; padding: 14px 16px; background: var(--amber-bg); border: 1px solid var(--amber-light); border-radius: var(--radius); font-size: 13px; color: var(--amber); margin-bottom: 16px; }
+  .ai-processing.visible { display: flex; }
+  .spinner { width: 18px; height: 18px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite; flex-shrink: 0; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .ai-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; padding: 3px 10px; border-radius: 20px; background: var(--blue-bg); color: var(--blue); font-weight: 500; }
+
+  /* TAGS */
+  .tag { display: inline-block; font-size: 11px; padding: 2px 9px; border-radius: 20px; font-weight: 500; white-space: nowrap; }
+  .tag-green { background: var(--green-light); color: var(--green); }
+  .tag-amber { background: var(--amber-light); color: var(--amber); }
+  .tag-red { background: var(--red-light); color: var(--red); }
+  .tag-blue { background: var(--blue-light); color: var(--blue); }
+  .tag-gray { background: #f3f4f6; color: #6b7280; }
+
+  /* TABLE */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; font-size: 11px; font-weight: 600; color: var(--text3); padding: 8px 12px; border-bottom: 1px solid var(--border); text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
+  td { padding: 11px 12px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: var(--bg2); }
+  .empty-row td { text-align: center; color: var(--text3); padding: 36px; font-size: 13px; }
+
+  /* STEPS */
+  .step-bar { display: flex; align-items: center; margin-bottom: 24px; }
+  .step { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text3); }
+  .step.done { color: var(--green); }
+  .step.current { color: var(--blue); font-weight: 600; }
+  .step-num { width: 24px; height: 24px; border-radius: 50%; border: 2px solid currentColor; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+  .step.done .step-num { background: var(--green); border-color: var(--green); color: #fff; }
+  .step-line { flex: 1; height: 1px; background: var(--border2); margin: 0 10px; min-width: 20px; }
+
+  /* SECTION */
+  .section-title { font-size: 12px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; margin: 20px 0 14px; display: flex; align-items: center; gap: 8px; }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  hr { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+  .flex { display: flex; align-items: center; }
+  .gap8 { gap: 8px; }
+  .gap12 { gap: 12px; }
+  .mt16 { margin-top: 16px; }
+  .hidden { display: none !important; }
+
+  /* MODAL */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 100; display: none; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
+  .modal-overlay.visible { display: flex; }
+  .modal { background: var(--bg); border-radius: var(--radius-lg); padding: 28px; max-width: 480px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
+  .modal-title { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+  .modal-body { font-size: 13px; color: var(--text2); line-height: 1.6; margin-bottom: 20px; }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+
+  /* SEARCH */
+  .search-wrap { position: relative; }
+  .search-wrap i { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 15px; color: var(--text3); }
+  .search-wrap input { padding-left: 32px; width: 220px; }
+
+  /* BANNER */
+  .banner { background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%); border-radius: var(--radius-lg); padding: 20px 24px; color: #fff; display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+  .banner-text h3 { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+  .banner-text p { font-size: 12px; opacity: 0.85; line-height: 1.5; }
+  .banner .btn { background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.3); color: #fff; flex-shrink: 0; }
+  .banner .btn:hover { background: rgba(255,255,255,0.25); }
+
+  /* EXPORT CARDS */
+  .export-option { border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 22px; display: flex; flex-direction: column; gap: 12px; transition: border-color 0.15s; }
+  .export-option:hover { border-color: var(--blue); }
+  .export-icon { font-size: 28px; }
+
+  /* RESPONSIVE */
+  @media (max-width: 900px) {
+    .sidebar { width: 60px; }
+    .nav-item span, .logo-title, .logo-sub, .nav-section, .sidebar-footer { display: none; }
+    .nav-item { justify-content: center; padding: 10px; }
+    .logo-icon { justify-content: center; }
+    .logo { padding: 14px 10px; }
+    .grid4 { grid-template-columns: 1fr 1fr; }
+    .grid3 { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 600px) {
+    .grid2, .grid3, .grid4 { grid-template-columns: 1fr; }
+    .content { padding: 14px; }
+    .banner { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="logo">
+      <div class="logo-icon">
+        <i class="ti ti-heart-rate-monitor"></i>
+        <span class="logo-title">EVAR Data Hub</span>
+      </div>
+      <div class="logo-sub">Chirurgia Vascolare</div>
+    </div>
+    <nav class="nav">
+      <div class="nav-section">Principale</div>
+      <div class="nav-item active" data-page="dashboard" onclick="showPage('dashboard',this)">
+        <i class="ti ti-layout-dashboard"></i><span>Dashboard</span>
+      </div>
+      <div class="nav-item" data-page="nuovo" onclick="showPage('nuovo',this)">
+        <i class="ti ti-user-plus"></i><span>Nuovo paziente</span>
+      </div>
+      <div class="nav-section">Dati</div>
+      <div class="nav-item" data-page="database" onclick="showPage('database',this)">
+        <i class="ti ti-database"></i><span>Database</span>
+      </div>
+      <div class="nav-item" data-page="esporta" onclick="showPage('esporta',this)">
+        <i class="ti ti-download"></i><span>Esporta dati</span>
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div>v1.0 — Dati locali</div>
+      <div style="margin-top:2px">Nessun server esterno</div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-left">
+        <span class="topbar-title" id="topbar-title">Dashboard</span>
+        <span id="topbar-count" style="font-size:12px; color:var(--text3)"></span>
+      </div>
+      <span class="topbar-badge" id="topbar-badge">🟢 Sistema attivo</span>
+    </div>
+
+    <div class="content">
+
+      <!-- ==================== DASHBOARD ==================== -->
+      <div class="page active" id="page-dashboard">
+        <div class="grid4" style="margin-bottom:20px">
+          <div class="stat-card">
+            <div class="stat-label">Pazienti totali</div>
+            <div class="stat-value" id="s-total">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Inseriti questo mese</div>
+            <div class="stat-value" id="s-month">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Con endoleak</div>
+            <div class="stat-value" id="s-endo">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Follow-up attivi</div>
+            <div class="stat-value" id="s-fu">0</div>
+          </div>
+        </div>
+
+        <div class="banner">
+          <div class="banner-text">
+            <h3><i class="ti ti-robot" style="margin-right:6px"></i>AI integrata — lettura PDF automatica</h3>
+            <p>Carica la cartella clinica anonimizzata e l'AI compila automaticamente i campi EVAR:<br>endoprotesi, misure aortiche, endoleak, complicanze, degenza.</p>
+          </div>
+          <button class="btn" onclick="showPage('nuovo', document.querySelector('[data-page=nuovo]'))">
+            <i class="ti ti-plus"></i> Nuovo caso
+          </button>
+        </div>
+
+        <div class="card">
+          <div class="card-title">
+            <span style="display:flex;align-items:center;gap:8px"><i class="ti ti-clock-hour-4"></i> Ultimi casi inseriti</span>
+            <button class="btn btn-sm" onclick="showPage('database', document.querySelector('[data-page=database]'))">
+              Vedi tutti <i class="ti ti-arrow-right"></i>
+            </button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Codice</th><th>Data EVAR</th><th>Età approx</th><th>Endoprotesi</th><th>Diam (mm)</th><th>Endoleak</th><th>Follow-up</th></tr>
+              </thead>
+              <tbody id="recent-tbody">
+                <tr class="empty-row"><td colspan="7">Nessun caso ancora inserito — <a href="#" onclick="showPage('nuovo',document.querySelector('[data-page=nuovo]'))">Aggiungi il primo</a></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== NUOVO PAZIENTE ==================== -->
+      <div class="page" id="page-nuovo">
+        <div class="step-bar">
+          <div class="step current" id="step1"><div class="step-num">1</div> <span>Dati paziente</span></div>
+          <div class="step-line"></div>
+          <div class="step" id="step2"><div class="step-num">2</div> <span>Carica PDF</span></div>
+          <div class="step-line"></div>
+          <div class="step" id="step3"><div class="step-num">3</div> <span>Revisione dati</span></div>
+          <div class="step-line"></div>
+          <div class="step" id="step4"><div class="step-num">4</div> <span>Salva</span></div>
+        </div>
+
+        <!-- S1: Identificazione -->
+        <div id="s1" class="card">
+          <div class="card-title"><span style="display:flex;align-items:center;gap:8px"><i class="ti ti-id"></i> Identificazione anonima</span></div>
+          <div class="grid2">
+            <div class="field"><label>Codice paziente (anonimo) *</label><input type="text" id="f-codice" placeholder="es. EVAR-2024-001"></div>
+            <div class="field"><label>Data intervento EVAR *</label><input type="date" id="f-data"></div>
+            <div class="field"><label>Anno di nascita</label><input type="number" id="f-anno" placeholder="es. 1948" min="1900" max="2010"></div>
+            <div class="field"><label>Sesso</label>
+              <select id="f-sesso"><option value="">— seleziona —</option><option>M</option><option>F</option></select>
+            </div>
+          </div>
+          <div class="section-title">Fattori di rischio</div>
+          <div class="grid3">
+            <div class="field"><label>Ipertensione</label>
+              <select id="f-htn"><option value="">—</option><option>Sì</option><option>No</option></select>
+            </div>
+            <div class="field"><label>Diabete</label>
+              <select id="f-dm"><option value="">—</option><option>Sì</option><option>No</option></select>
+            </div>
+            <div class="field"><label>Fumo</label>
+              <select id="f-smoke"><option value="">—</option><option>Attivo</option><option>Ex-fumatore</option><option>Non fumatore</option></select>
+            </div>
+            <div class="field"><label>Cardiopatia ischemica</label>
+              <select id="f-cad"><option value="">—</option><option>Sì</option><option>No</option></select>
+            </div>
+            <div class="field"><label>BPCO</label>
+              <select id="f-bpco"><option value="">—</option><option>Sì</option><option>No</option></select>
+            </div>
+            <div class="field"><label>CKD (eGFR ml/min)</label>
+              <input type="number" id="f-ckd" placeholder="es. 65">
+            </div>
+          </div>
+          <div class="mt16">
+            <button class="btn btn-primary" onclick="goStep2()"><span>Continua</span> <i class="ti ti-arrow-right"></i></button>
+          </div>
+        </div>
+
+        <!-- S2: Upload PDF -->
+        <div id="s2" class="card hidden">
+          <div class="card-title"><span style="display:flex;align-items:center;gap:8px"><i class="ti ti-file-text"></i> Carica referto / cartella clinica</span></div>
+          <div class="upload-zone" id="drop-zone" onclick="document.getElementById('pdf-input').click()"
+            ondragover="event.preventDefault(); this.style.borderColor='var(--blue)'"
+            ondragleave="this.style.borderColor=''"
+            ondrop="handleDrop(event)">
+            <i class="ti ti-cloud-upload upload-icon" id="upload-icon-el"></i>
+            <div id="upload-main-text" style="font-size:14px; font-weight:500; margin-bottom:6px">Clicca o trascina il PDF anonimizzato</div>
+            <div id="upload-sub-text" style="font-size:12px; color:var(--text3)">Il file resta nel tuo browser — nessun upload su server esterni</div>
+          </div>
+          <input type="file" id="pdf-input" accept=".pdf" style="display:none" onchange="handlePDF(this)">
+          <div class="mt16 flex gap8">
+            <button class="btn" onclick="goStep1()"><i class="ti ti-arrow-left"></i> Indietro</button>
+            <button class="btn btn-primary hidden" id="btn-ai" onclick="runAI()"><i class="ti ti-robot"></i> Analizza con AI</button>
+            <button class="btn" onclick="skipAI()"><i class="ti ti-pencil"></i> Compila manualmente</button>
+          </div>
+        </div>
+
+        <!-- S3: Form dati EVAR -->
+        <div id="s3" class="card hidden">
+          <div class="ai-processing" id="ai-spin">
+            <div class="spinner"></div>
+            <span>L'AI sta leggendo il referto e compilando i campi clinici EVAR...</span>
+          </div>
+
+          <div class="card-title">
+            <span style="display:flex;align-items:center;gap:8px"><i class="ti ti-stethoscope"></i> Dati procedurali EVAR</span>
+            <span class="ai-badge hidden" id="ai-label"><i class="ti ti-robot"></i> Compilato da AI — controlla e correggi</span>
+          </div>
+
+          <div class="section-title">Endoprotesi</div>
+          <div class="grid3">
+            <div class="field"><label>Nome endoprotesi</label><input type="text" id="f-endo" placeholder="es. Endurant II, Excluder, Ovation"></div>
+            <div class="field"><label>Casa produttrice</label><input type="text" id="f-brand" placeholder="es. Medtronic, Gore, Endologix"></div>
+            <div class="field"><label>Configurazione</label>
+              <select id="f-config">
+                <option value="">— seleziona —</option>
+                <option>Biforcata</option><option>Tube graft</option><option>FEVAR</option><option>BEVAR</option><option>CHEVAR</option><option>Iliaca (EIAS)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="section-title">Anatomia aortica (dalla CTA preoperatoria)</div>
+          <div class="grid3">
+            <div class="field"><label>Diametro max aneurisma (mm)</label><input type="number" id="f-diam" placeholder="es. 58"></div>
+            <div class="field"><label>Diametro colletto prossimale (mm)</label><input type="number" id="f-collo-mm" placeholder="es. 23"></div>
+            <div class="field"><label>Lunghezza colletto prossimale (mm)</label><input type="number" id="f-collo-l" placeholder="es. 15"></div>
+            <div class="field"><label>Angolo colletto prossimale (°)</label><input type="number" id="f-angolo" placeholder="es. 32"></div>
+            <div class="field"><label>Diametro iliaca comune SX (mm)</label><input type="number" id="f-il-sx" placeholder="es. 12"></div>
+            <div class="field"><label>Diametro iliaca comune DX (mm)</label><input type="number" id="f-il-dx" placeholder="es. 11"></div>
+            <div class="field"><label>Lunghezza totale (mm)</label><input type="number" id="f-lung" placeholder="es. 140"></div>
+            <div class="field"><label>Trombo murale</label>
+              <select id="f-trombo"><option value="">—</option><option>Assente</option><option>Lieve</option><option>Moderato</option><option>Esteso</option></select>
+            </div>
+            <div class="field"><label>Calcificazioni colletto</label>
+              <select id="f-calc"><option value="">—</option><option>Assenti</option><option>Lievi</option><option>Moderate</option><option>Severe</option></select>
+            </div>
+          </div>
+
+          <div class="section-title">Esito procedurale</div>
+          <div class="grid3">
+            <div class="field"><label>Endoleak intraoperatorio</label>
+              <select id="f-leak">
+                <option value="Nessuno">Nessuno</option>
+                <option>Tipo I</option><option>Tipo II</option><option>Tipo III</option><option>Tipo IV</option><option>Tipo V (endotension)</option>
+              </select>
+            </div>
+            <div class="field"><label>Successo tecnico</label>
+              <select id="f-success"><option value="">—</option><option>Sì</option><option>No</option><option>Parziale</option></select>
+            </div>
+            <div class="field"><label>Tipo anestesia</label>
+              <select id="f-anest"><option value="">—</option><option>Generale</option><option>Spinale</option><option>Locoregionale</option><option>Locale + sedazione</option></select>
+            </div>
+            <div class="field"><label>Durata intervento (min)</label><input type="number" id="f-durata" placeholder="es. 120"></div>
+            <div class="field"><label>Perdita ematica (ml)</label><input type="number" id="f-blood" placeholder="es. 300"></div>
+            <div class="field"><label>Mezzo di contrasto (ml)</label><input type="number" id="f-mdc" placeholder="es. 100"></div>
+            <div class="field"><label>Fluoroscopia (min)</label><input type="number" id="f-fluoro" placeholder="es. 25"></div>
+            <div class="field"><label>Degenza post-op (gg)</label><input type="number" id="f-degenza" placeholder="es. 3"></div>
+            <div class="field"><label>Accesso vascolare</label>
+              <select id="f-access"><option value="">—</option><option>Percutaneo bilat.</option><option>Chirurgico bilat.</option><option>Misto</option></select>
+            </div>
+          </div>
+
+          <div class="section-title">Complicanze e follow-up</div>
+          <div class="grid3">
+            <div class="field"><label>Complicanze a 30 giorni</label>
+              <select id="f-comp">
+                <option value="Nessuna">Nessuna</option>
+                <option>Trombosi branch</option><option>Migrazione</option><option>Rottura</option>
+                <option>Infarto miocardico</option><option>Stroke</option><option>IRA</option>
+                <option>Ischemia midollare</option><option>Ischemia intestinale</option><option>Altra</option>
+              </select>
+            </div>
+            <div class="field"><label>Mortalità 30gg</label>
+              <select id="f-mort"><option value="No">No</option><option>Sì</option></select>
+            </div>
+            <div class="field"><label>Stato follow-up</label>
+              <select id="f-fu"><option value="In corso">In corso</option><option>Completato</option><option>Perso</option><option>Deceduto</option></select>
+            </div>
+            <div class="field"><label>Ultima CTA di controllo</label><input type="date" id="f-last-cta"></div>
+            <div class="field"><label>Endoleak a follow-up</label>
+              <select id="f-leak-fu">
+                <option value="Nessuno">Nessuno</option>
+                <option>Tipo I</option><option>Tipo II</option><option>Tipo III</option><option>Tipo V</option>
+              </select>
+            </div>
+            <div class="field"><label>Reintervento</label>
+              <select id="f-reint"><option value="No">No</option><option>Sì — endovascolare</option><option>Sì — open</option></select>
+            </div>
+          </div>
+
+          <div class="field" style="margin-top:4px"><label>Note cliniche libere</label><textarea id="f-note" placeholder="Annotazioni, varianti anatomiche, modifiche intraoperatorie, dettagli clinici rilevanti..."></textarea></div>
+
+          <div class="flex gap8 mt16">
+            <button class="btn" onclick="goStep2AI()"><i class="ti ti-arrow-left"></i> Indietro</button>
+            <button class="btn btn-success" onclick="saveCase()"><i class="ti ti-device-floppy"></i> Salva caso nel database</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== DATABASE ==================== -->
+      <div class="page" id="page-database">
+        <div class="card">
+          <div class="card-title">
+            <span style="display:flex;align-items:center;gap:8px"><i class="ti ti-database"></i> Database pazienti EVAR</span>
+            <div class="flex gap8">
+              <div class="search-wrap">
+                <i class="ti ti-search"></i>
+                <input type="text" id="search-input" placeholder="Cerca codice..." oninput="filterTable()">
+              </div>
+              <button class="btn btn-sm" onclick="showPage('esporta',document.querySelector('[data-page=esporta]'))"><i class="ti ti-download"></i> Esporta</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Codice</th><th>Data EVAR</th><th>Età</th><th>Sesso</th>
+                  <th>Endoprotesi</th><th>Diam (mm)</th><th>Endoleak</th>
+                  <th>Comp 30gg</th><th>Follow-up</th><th style="width:100px">Azioni</th>
+                </tr>
+              </thead>
+              <tbody id="db-tbody">
+                <tr class="empty-row"><td colspan="10">Nessun caso nel database</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== ESPORTA ==================== -->
+      <div class="page" id="page-esporta">
+        <div class="card">
+          <div class="card-title"><span style="display:flex;align-items:center;gap:8px"><i class="ti ti-download"></i> Esporta database</span></div>
+          <div class="grid2">
+            <div class="export-option">
+              <div class="export-icon"><i class="ti ti-file-spreadsheet" style="font-size:32px; color:#15803d"></i></div>
+              <div>
+                <div style="font-size:15px; font-weight:600; margin-bottom:4px">Excel (.xlsx)</div>
+                <div style="font-size:12px; color:var(--text2); line-height:1.5">Formato ottimale per analisi in SPSS, R, o Python. Include tutti i campi strutturati.</div>
+              </div>
+              <button class="btn btn-success" onclick="exportXLSX()"><i class="ti ti-download"></i> Scarica Excel</button>
+            </div>
+            <div class="export-option">
+              <div class="export-icon"><i class="ti ti-file-text" style="font-size:32px; color:var(--blue)"></i></div>
+              <div>
+                <div style="font-size:15px; font-weight:600; margin-bottom:4px">CSV (.csv)</div>
+                <div style="font-size:12px; color:var(--text2); line-height:1.5">Formato universale, compatibile con qualsiasi software di analisi statistica.</div>
+              </div>
+              <button class="btn btn-primary" onclick="exportCSV()"><i class="ti ti-download"></i> Scarica CSV</button>
+            </div>
+          </div>
+          <div style="margin-top:14px; padding:12px 14px; background:var(--bg2); border-radius:var(--radius); font-size:12px; color:var(--text3)">
+            <i class="ti ti-shield-lock" style="margin-right:6px"></i>
+            I dati vengono esportati esclusivamente dal database locale del tuo browser. Nessun dato viene trasmesso a server esterni in nessun momento.
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><span style="display:flex;align-items:center;gap:8px"><i class="ti ti-chart-bar"></i> Statistiche del registro</span></div>
+          <div class="grid3" id="stats-grid" style="gap:12px; margin-bottom:0"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- MODAL conferma eliminazione -->
+<div class="modal-overlay" id="del-modal">
+  <div class="modal">
+    <div class="modal-title">Eliminare questo caso?</div>
+    <div class="modal-body">Questa operazione è irreversibile. Il caso verrà rimosso definitivamente dal database locale.</div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal()">Annulla</button>
+      <button class="btn btn-danger" id="confirm-del">Elimina</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let cases = [];
+let currentPDFBase64 = null;
+let editIdx = null;
+let pendingDelIdx = null;
+
+const STORAGE_KEY = 'evar_hub_cases_v2';
+
+const FIELDS = [
+  'codice','data','anno','sesso','htn','dm','smoke','cad','bpco','ckd',
+  'endo','brand','config','diam','collo_mm','collo_l','angolo','il_sx','il_dx','lung','trombo','calc',
+  'leak','success','anest','durata','blood','mdc','fluoro','degenza','access',
+  'comp','mort','fu','last_cta','leak_fu','reint','note'
+];
+const HEADERS = [
+  'Codice','Data EVAR','Anno nascita','Sesso','Ipertensione','Diabete','Fumo','Cardiopatia isch.','BPCO','CKD (eGFR)',
+  'Endoprotesi','Brand','Configurazione','Diam max (mm)','Colletto prox (mm)','Lungh colletto (mm)','Angolo colletto (°)','Iliac SX (mm)','Iliac DX (mm)','Lunghezza totale (mm)','Trombo murale','Calcif. colletto',
+  'Endoleak intraop','Successo tecnico','Anestesia','Durata (min)','Perdita ematica (ml)','MDC (ml)','Fluoroscopia (min)','Degenza (gg)','Accesso vascolare',
+  'Complicanze 30gg','Mortalità 30gg','Follow-up','Ultima CTA','Endoleak follow-up','Reintervento','Note'
+];
+
+// ─── PERSISTENCE ─────────────────────────────────────────────────────────────
+function loadCases() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) cases = JSON.parse(raw);
+  } catch(e) { cases = []; }
+  refreshAll();
+}
+function saveCases() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(cases)); } catch(e) {}
+}
+
+// ─── NAVIGATION ──────────────────────────────────────────────────────────────
+const pageNames = { dashboard:'Dashboard', nuovo:'Nuovo paziente', database:'Database', esporta:'Esporta dati' };
+function showPage(name, navEl) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  if (navEl) navEl.classList.add('active');
+  document.getElementById('topbar-title').textContent = pageNames[name] || name;
+  document.getElementById('topbar-count').textContent = name === 'database' ? cases.length + ' casi' : '';
+  if (name === 'dashboard') renderDashboard();
+  if (name === 'database') renderDB();
+  if (name === 'esporta') renderStats();
+}
+
+// ─── STEP MANAGEMENT ─────────────────────────────────────────────────────────
+function setStep(n) {
+  for (let i=1; i<=4; i++) {
+    const el = document.getElementById('step'+i);
+    if (i < n) { el.className = 'step done'; el.querySelector('.step-num').textContent = '✓'; }
+    else if (i === n) { el.className = 'step current'; el.querySelector('.step-num').textContent = i; }
+    else { el.className = 'step'; el.querySelector('.step-num').textContent = i; }
+  }
+}
+function goStep1() {
+  ['s1','s2','s3'].forEach(id => document.getElementById(id).classList.add('hidden'));
+  document.getElementById('s1').classList.remove('hidden');
+  setStep(1);
+}
+function goStep2() {
+  const cod = document.getElementById('f-codice').value.trim();
+  if (!cod) { alert('Inserisci un codice paziente anonimo prima di procedere.'); return; }
+  ['s1','s2','s3'].forEach(id => document.getElementById(id).classList.add('hidden'));
+  document.getElementById('s2').classList.remove('hidden');
+  setStep(2);
+}
+function goStep2AI() {
+  ['s1','s2','s3'].forEach(id => document.getElementById(id).classList.add('hidden'));
+  document.getElementById('s2').classList.remove('hidden');
+  setStep(2);
+}
+function goStep3() {
+  ['s1','s2','s3'].forEach(id => document.getElementById(id).classList.add('hidden'));
+  document.getElementById('s3').classList.remove('hidden');
+  setStep(3);
+}
+
+// ─── PDF HANDLING ─────────────────────────────────────────────────────────────
+function handleDrop(e) {
+  e.preventDefault();
+  const file = e.dataTransfer.files[0];
+  if (file && file.type === 'application/pdf') loadPDF(file);
+}
+function handlePDF(input) { if (input.files[0]) loadPDF(input.files[0]); }
+function loadPDF(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    currentPDFBase64 = e.target.result.split(',')[1];
+    const dz = document.getElementById('drop-zone');
+    dz.classList.add('has-file');
+    document.getElementById('upload-icon-el').className = 'ti ti-file-check upload-icon';
+    document.getElementById('upload-main-text').textContent = '📎 ' + file.name;
+    document.getElementById('upload-sub-text').textContent = 'PDF caricato — pronto per analisi AI';
+    document.getElementById('btn-ai').classList.remove('hidden');
+  };
+  reader.readAsDataURL(file);
+}
+function skipAI() {
+  document.getElementById('ai-label').classList.add('hidden');
+  clearForm();
+  goStep3();
+}
+
+// ─── AI ANALYSIS ─────────────────────────────────────────────────────────────
+async function runAI() {
+  if (!currentPDFBase64) return;
+  goStep3();
+  document.getElementById('ai-spin').classList.add('visible');
+  document.getElementById('ai-label').classList.add('hidden');
+
+  const prompt = `Sei un assistente specializzato in chirurgia vascolare endovascolare. Analizza questo documento clinico relativo a un intervento EVAR (Endovascular Aortic Repair) ed estrai SOLO i dati presenti, in formato JSON puro (nessun testo, nessun markdown, nessun backtick).
+
+Schema JSON richiesto:
+{
+  "endo": "nome commerciale endoprotesi o null",
+  "brand": "casa produttrice o null",
+  "config": "Biforcata|Tube graft|FEVAR|BEVAR|CHEVAR|Iliaca (EIAS) o null",
+  "diam": numero in mm o null,
+  "collo_mm": numero in mm o null,
+  "collo_l": numero in mm o null,
+  "angolo": numero in gradi o null,
+  "il_sx": numero in mm o null,
+  "il_dx": numero in mm o null,
+  "lung": numero in mm o null,
+  "trombo": "Assente|Lieve|Moderato|Esteso o null",
+  "calc": "Assenti|Lievi|Moderate|Severe o null",
+  "leak": "Nessuno|Tipo I|Tipo II|Tipo III|Tipo IV|Tipo V (endotension) o Nessuno",
+  "success": "Sì|No|Parziale o null",
+  "anest": "Generale|Spinale|Locoregionale|Locale + sedazione o null",
+  "durata": numero in minuti o null,
+  "blood": numero in ml o null,
+  "mdc": numero in ml o null,
+  "fluoro": numero in minuti o null,
+  "degenza": numero in giorni o null,
+  "access": "Percutaneo bilat.|Chirurgico bilat.|Misto o null",
+  "comp": "Nessuna|Trombosi branch|Migrazione|Rottura|Infarto miocardico|Stroke|IRA|Ischemia midollare|Ischemia intestinale|Altra o Nessuna",
+  "mort": "No|Sì o No",
+  "fu": "In corso|Completato|Perso|Deceduto o In corso",
+  "leak_fu": "Nessuno|Tipo I|Tipo II|Tipo III|Tipo V o Nessuno",
+  "reint": "No|Sì — endovascolare|Sì — open o No",
+  "note": "note rilevanti sintetiche o stringa vuota"
+}
+
+Rispondi SOLO con il JSON. Se un dato non è presente o non è chiaramente leggibile, scrivi null.`;
+
+  try {
+    const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 1000,
+        messages: [{
+          role: "user",
+          content: [
+            { type: "document", source: { type: "base64", media_type: "application/pdf", data: currentPDFBase64 } },
+            { type: "text", text: prompt }
+          ]
+        }]
+      })
+    });
+    const data = await resp.json();
+    const text = (data.content || []).map(i => i.text || '').join('');
+    const clean = text.replace(/```json|```/g,'').trim();
+    const parsed = JSON.parse(clean);
+    fillFormFromAI(parsed);
+    document.getElementById('ai-label').classList.remove('hidden');
+  } catch(err) {
+    console.error(err);
+    alert('Errore durante l\'analisi AI. Puoi compilare i campi manualmente.');
+  }
+  document.getElementById('ai-spin').classList.remove('visible');
+}
+
+const AI_MAP = {
+  endo:'f-endo', brand:'f-brand', config:'f-config', diam:'f-diam',
+  collo_mm:'f-collo-mm', collo_l:'f-collo-l', angolo:'f-angolo',
+  il_sx:'f-il-sx', il_dx:'f-il-dx', lung:'f-lung', trombo:'f-trombo', calc:'f-calc',
+  leak:'f-leak', success:'f-success', anest:'f-anest', durata:'f-durata',
+  blood:'f-blood', mdc:'f-mdc', fluoro:'f-fluoro', degenza:'f-degenza', access:'f-access',
+  comp:'f-comp', mort:'f-mort', fu:'f-fu', leak_fu:'f-leak-fu', reint:'f-reint', note:'f-note'
+};
+function fillFormFromAI(d) {
+  for (const [k, id] of Object.entries(AI_MAP)) {
+    const el = document.getElementById(id);
+    if (el && d[k] !== null && d[k] !== undefined) el.value = d[k];
+  }
+}
+function clearForm() {
+  Object.values(AI_MAP).forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.value = el.tagName === 'SELECT' ? el.options[0].value : '';
+  });
+}
+
+// ─── FORM DATA ────────────────────────────────────────────────────────────────
+function getFormData() {
+  const g = id => { const el = document.getElementById(id); return el ? el.value : ''; };
+  return {
+    codice: g('f-codice'), data: g('f-data'), anno: g('f-anno'), sesso: g('f-sesso'),
+    htn: g('f-htn'), dm: g('f-dm'), smoke: g('f-smoke'), cad: g('f-cad'), bpco: g('f-bpco'), ckd: g('f-ckd'),
+    endo: g('f-endo'), brand: g('f-brand'), config: g('f-config'),
+    diam: g('f-diam'), collo_mm: g('f-collo-mm'), collo_l: g('f-collo-l'),
+    angolo: g('f-angolo'), il_sx: g('f-il-sx'), il_dx: g('f-il-dx'),
+    lung: g('f-lung'), trombo: g('f-trombo'), calc: g('f-calc'),
+    leak: g('f-leak'), success: g('f-success'), anest: g('f-anest'),
+    durata: g('f-durata'), blood: g('f-blood'), mdc: g('f-mdc'),
+    fluoro: g('f-fluoro'), degenza: g('f-degenza'), access: g('f-access'),
+    comp: g('f-comp'), mort: g('f-mort'), fu: g('f-fu'),
+    last_cta: g('f-last-cta'), leak_fu: g('f-leak-fu'), reint: g('f-reint'), note: g('f-note'),
+    savedAt: new Date().toISOString()
+  };
+}
+
+// ─── SAVE ─────────────────────────────────────────────────────────────────────
+async function saveCase() {
+  const d = getFormData();
+  if (!d.codice) { alert('Il codice paziente è obbligatorio.'); return; }
+  if (editIdx !== null) { cases[editIdx] = d; editIdx = null; }
+  else cases.push(d);
+  saveCases();
+  refreshAll();
+  // Reset form
+  ['f-codice','f-data','f-anno','f-sesso'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = el.tagName === 'SELECT' ? el.options[0].value : '';
+  });
+  clearForm();
+  currentPDFBase64 = null;
+  document.getElementById('drop-zone').classList.remove('has-file');
+  document.getElementById('upload-icon-el').className = 'ti ti-cloud-upload upload-icon';
+  document.getElementById('upload-main-text').textContent = 'Clicca o trascina il PDF anonimizzato';
+  document.getElementById('upload-sub-text').textContent = 'Il file resta nel tuo browser — nessun upload su server esterni';
+  document.getElementById('btn-ai').classList.add('hidden');
+  document.getElementById('pdf-input').value = '';
+  goStep1();
+  showPage('dashboard', document.querySelector('[data-page=dashboard]'));
+}
+
+// ─── RENDER HELPERS ───────────────────────────────────────────────────────────
+function leakTag(v) {
+  if (!v || v==='Nessuno') return '<span class="tag tag-green">Nessuno</span>';
+  if (v==='Tipo I'||v==='Tipo III') return `<span class="tag tag-red">${v}</span>`;
+  return `<span class="tag tag-amber">${v}</span>`;
+}
+function fuTag(v) {
+  const map = { 'In corso':'tag-blue', 'Completato':'tag-green', 'Perso':'tag-amber', 'Deceduto':'tag-red' };
+  return `<span class="tag ${map[v]||'tag-gray'}">${v||'—'}</span>`;
+}
+function compTag(v) {
+  if (!v || v==='Nessuna') return '<span class="tag tag-green">Nessuna</span>';
+  return `<span class="tag tag-red">${v}</span>`;
+}
+function calcAge(anno, dataIntervento) {
+  if (!anno || !dataIntervento) return '—';
+  const year = parseInt(dataIntervento.split('-')[0]);
+  return year - parseInt(anno);
+}
+
+// ─── DASHBOARD ────────────────────────────────────────────────────────────────
+function renderDashboard() {
+  document.getElementById('s-total').textContent = cases.length;
+  const now = new Date();
+  const thisMonth = cases.filter(c => {
+    if (!c.savedAt) return false;
+    const d = new Date(c.savedAt);
+    return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear();
+  }).length;
+  document.getElementById('s-month').textContent = thisMonth;
+  document.getElementById('s-endo').textContent = cases.filter(c => c.leak && c.leak !== 'Nessuno').length;
+  document.getElementById('s-fu').textContent = cases.filter(c => c.fu === 'In corso').length;
+
+  const tbody = document.getElementById('recent-tbody');
+  const recent = [...cases].reverse().slice(0,8);
+  if (!recent.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="7">Nessun caso — <a href="#" onclick="showPage(\'nuovo\',document.querySelector(\'[data-page=nuovo]\'))">Aggiungi il primo</a></td></tr>';
+    return;
+  }
+  tbody.innerHTML = recent.map(c => `<tr>
+    <td><strong>${c.codice||'—'}</strong></td>
+    <td>${c.data||'—'}</td>
+    <td>${calcAge(c.anno, c.data)}</td>
+    <td>${c.endo||'—'}</td>
+    <td>${c.diam ? c.diam+' mm' : '—'}</td>
+    <td>${leakTag(c.leak)}</td>
+    <td>${fuTag(c.fu)}</td>
+  </tr>`).join('');
+}
+
+// ─── DATABASE ─────────────────────────────────────────────────────────────────
+function renderDB(filter='') {
+  const tbody = document.getElementById('db-tbody');
+  const filtered = cases.map((c,i)=>({c,i})).filter(({c}) =>
+    !filter || c.codice.toLowerCase().includes(filter.toLowerCase()) ||
+    (c.endo||'').toLowerCase().includes(filter.toLowerCase())
+  );
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="10">Nessun caso trovato</td></tr>';
+    return;
+  }
+  tbody.innerHTML = filtered.map(({c,i}) => `<tr>
+    <td><strong>${c.codice||'—'}</strong></td>
+    <td>${c.data||'—'}</td>
+    <td>${calcAge(c.anno,c.data)}</td>
+    <td>${c.sesso||'—'}</td>
+    <td>${c.endo ? `${c.endo}${c.brand?' ('+c.brand+')':''}` : '—'}</td>
+    <td>${c.diam||'—'}</td>
+    <td>${leakTag(c.leak)}</td>
+    <td>${compTag(c.comp)}</td>
+    <td>${fuTag(c.fu)}</td>
+    <td>
+      <div style="display:flex;gap:4px">
+        <button class="btn btn-sm" title="Modifica" onclick="editCase(${i})"><i class="ti ti-edit"></i></button>
+        <button class="btn btn-sm btn-danger" title="Elimina" onclick="promptDelete(${i})"><i class="ti ti-trash"></i></button>
+      </div>
+    </td>
+  </tr>`).join('');
+}
+function filterTable() { renderDB(document.getElementById('search-input').value); }
+
+// ─── EDIT / DELETE ────────────────────────────────────────────────────────────
+function editCase(idx) {
+  const c = cases[idx]; editIdx = idx;
+  const s = id => { const el=document.getElementById(id); if(el) el.value=c[id.replace('f-','').replace('-','_')]||''; };
+  document.getElementById('f-codice').value = c.codice||'';
+  document.getElementById('f-data').value = c.data||'';
+  document.getElementById('f-anno').value = c.anno||'';
+  document.getElementById('f-sesso').value = c.sesso||'';
+  ['f-htn','f-dm','f-smoke','f-cad','f-bpco','f-ckd'].forEach(id=>{
+    const k = id.replace('f-','');
+    const el=document.getElementById(id); if(el) el.value=c[k]||'';
+  });
+  fillFormFromAI(c);
+  showPage('nuovo', document.querySelector('[data-page=nuovo]'));
+  goStep3();
+  document.getElementById('ai-label').classList.add('hidden');
+}
+function promptDelete(idx) {
+  pendingDelIdx = idx;
+  document.getElementById('del-modal').classList.add('visible');
+  document.getElementById('confirm-del').onclick = () => { deleteCase(pendingDelIdx); closeModal(); };
+}
+function closeModal() { document.getElementById('del-modal').classList.remove('visible'); pendingDelIdx = null; }
+function deleteCase(idx) {
+  cases.splice(idx,1); saveCases(); refreshAll();
+}
+
+// ─── STATS ────────────────────────────────────────────────────────────────────
+function renderStats() {
+  const g = document.getElementById('stats-grid');
+  if (!cases.length) { g.innerHTML = '<div style="color:var(--text3);font-size:13px">Nessun dato disponibile</div>'; return; }
+
+  const num = arr => arr.filter(Boolean).map(Number);
+  const avg = arr => arr.length ? (arr.reduce((a,b)=>a+b,0)/arr.length) : null;
+  const fmt = v => v !== null ? v.toFixed(1) : '—';
+
+  const ages = cases.filter(c=>c.anno&&c.data).map(c=>parseInt(c.data.split('-')[0])-parseInt(c.anno));
+  const diams = num(cases.map(c=>c.diam));
+  const degenze = num(cases.map(c=>c.degenza));
+  const durate = num(cases.map(c=>c.durata));
+
+  const items = [
+    { label:'Pazienti totali', val: cases.length, sub: cases.filter(c=>c.sesso==='M').length+'M / '+cases.filter(c=>c.sesso==='F').length+'F' },
+    { label:'Età media (aa)', val: ages.length ? Math.round(avg(ages)) : '—', sub: ages.length ? 'min '+Math.min(...ages)+' – max '+Math.max(...ages) : '' },
+    { label:'Diam medio aneurisma', val: diams.length ? Math.round(avg(diams))+' mm' : '—', sub: diams.length ? 'range '+Math.min(...diams)+'-'+Math.max(...diams)+' mm' : '' },
+    { label:'Degenza media', val: degenze.length ? fmt(avg(degenze))+' gg' : '—', sub: '' },
+    { label:'Endoleak (qualsiasi)', val: cases.filter(c=>c.leak&&c.leak!=='Nessuno').length, sub: cases.length ? Math.round(cases.filter(c=>c.leak&&c.leak!=='Nessuno').length/cases.length*100)+'%' : '' },
+    { label:'Complicanze 30gg', val: cases.filter(c=>c.comp&&c.comp!=='Nessuna').length, sub: cases.length ? Math.round(cases.filter(c=>c.comp&&c.comp!=='Nessuna').length/cases.length*100)+'%' : '' },
+    { label:'Mortalità 30gg', val: cases.filter(c=>c.mort==='Sì').length, sub: cases.length ? Math.round(cases.filter(c=>c.mort==='Sì').length/cases.length*100)+'%' : '' },
+    { label:'Durata media op.', val: durate.length ? Math.round(avg(durate))+' min' : '—', sub: '' },
+    { label:'Follow-up in corso', val: cases.filter(c=>c.fu==='In corso').length, sub: '' },
+  ];
+  g.innerHTML = items.map(it=>`
+    <div class="stat-card">
+      <div class="stat-label">${it.label}</div>
+      <div class="stat-value">${it.val}</div>
+      ${it.sub ? `<div class="stat-sub">${it.sub}</div>` : ''}
+    </div>`).join('');
+}
+
+// ─── EXPORT ───────────────────────────────────────────────────────────────────
+function buildRows() {
+  return cases.map(c => FIELDS.map(f => c[f] !== undefined ? c[f] : ''));
+}
+function exportCSV() {
+  if (!cases.length) { alert('Nessun dato da esportare.'); return; }
+  const rows = [HEADERS, ...buildRows()];
+  const csv = rows.map(r => r.map(v => '"'+String(v||'').replace(/"/g,'""')+'"').join(',')).join('\r\n');
+  download('\uFEFF'+csv, 'EVAR_DataHub_'+today()+'.csv', 'text/csv;charset=utf-8');
+}
+function exportXLSX() {
+  if (!cases.length) { alert('Nessun dato da esportare.'); return; }
+  const ws = XLSX.utils.aoa_to_sheet([HEADERS, ...buildRows()]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'EVAR Database');
+  XLSX.writeFile(wb, 'EVAR_DataHub_'+today()+'.xlsx');
+}
+function download(content, filename, mime) {
+  const blob = new Blob([content], {type: mime});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+function today() { return new Date().toISOString().slice(0,10).replace(/-/g,''); }
+
+// ─── REFRESH ALL ──────────────────────────────────────────────────────────────
+function refreshAll() { renderDashboard(); renderDB(); }
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+loadCases();
+</script>
+</body>
+</html>
