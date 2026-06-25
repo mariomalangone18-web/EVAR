@@ -210,8 +210,8 @@
       </div>
     </nav>
     <div class="sidebar-footer">
-      <div>v1.0 — Dati locali</div>
-      <div style="margin-top:2px">Nessun server esterno</div>
+      <div>v1.1 — Dati locali</div>
+      <div style="margin-top:6px"><button class="btn btn-sm" style="width:100%;font-size:11px;justify-content:center" onclick="showApiKeyModal()"><i class="ti ti-key"></i> <span>API Key AI</span></button></div>
     </div>
   </div>
 
@@ -740,15 +740,36 @@ Rispondi SOLO con il JSON. Se un dato non è presente o non è chiaramente leggi
         }]
       })
     });
+    if (!resp.ok) {
+      const errBody = await resp.json().catch(() => ({}));
+      const errMsg = errBody?.error?.message || `HTTP ${resp.status}`;
+      // API key error → reset key and show modal again
+      if (resp.status === 401) {
+        localStorage.removeItem('evar_anthropic_key');
+        document.getElementById('ai-spin').classList.remove('visible');
+        document.getElementById('api-key-input').value = '';
+        document.getElementById('apikey-modal').classList.add('visible');
+        document.getElementById('apikey-modal').querySelector('.modal-body').innerHTML =
+          '<span style="color:var(--red);font-weight:600">❌ API key non valida o scaduta.</span><br><br>Controlla la key su <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color:var(--blue)">console.anthropic.com</a> e reinseriscila.';
+        return;
+      }
+      throw new Error(`API error ${resp.status}: ${errMsg}`);
+    }
     const data = await resp.json();
-    const text = (data.content || []).map(i => i.text || '').join('');
-    const clean = text.replace(/```json|```/g,'').trim();
-    const parsed = JSON.parse(clean);
+    if (!data.content || data.content.length === 0) {
+      throw new Error('Risposta AI vuota');
+    }
+    const text = data.content.map(i => i.text || '').join('');
+    const clean = text.replace(/```json[\s\S]*?```|```/g,'').trim();
+    // find JSON object in response
+    const jsonMatch = clean.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('Nessun JSON trovato nella risposta: ' + text.slice(0,200));
+    const parsed = JSON.parse(jsonMatch[0]);
     fillFormFromAI(parsed);
     document.getElementById('ai-label').classList.remove('hidden');
   } catch(err) {
-    console.error(err);
-    alert('Errore durante l\'analisi AI. Puoi compilare i campi manualmente.');
+    console.error('EVAR AI error:', err);
+    alert('Errore analisi AI:\n' + err.message + '\n\nSe il problema persiste, controlla la Console del browser (F12 → Console) e segnala il messaggio.');
   }
   document.getElementById('ai-spin').classList.remove('visible');
 }
